@@ -1,3 +1,5 @@
+[English](README.md) | [繁體中文](README.zh.md)
+
 # Smart Search
 
 A Claude Code skill that intelligently routes search queries across multiple backends — **DeepWiki**, **Context7**, and **Perplexity Pro** — to deliver the best answer with minimal cost.
