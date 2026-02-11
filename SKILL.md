@@ -157,7 +157,7 @@ python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 - Context7 quota exhausted → **DeepWiki fallback** (not Perplexity)
 - Perplexity Pro membership valid until **2026/12/28**
 - Context7 limit resets on the 1st of each month automatically
-- Use `mcp__browser-tools__getConsoleErrors` if Perplexity page fails to load
+- Use `mcp__playwright__browser_console_messages` (level=error) if Perplexity page fails to load
 
 ## Additional Resources
 
