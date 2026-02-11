@@ -2,11 +2,7 @@
 
 ## Pending
 
-### 2026-02-11 — Perplexity UI redesign (chat bubbles, new sidebar)
-- **Category**: tech
-- **Evidence**: Feb 2026 Perplexity changelog confirms UI redesign with chat bubble messages, universal tabs, sidebar restructure.
-- **Research**: Changes are live on web. Playwright automation uses accessibility tree via browser_snapshot (not CSS selectors), so impact may be minimal. But element refs and DOM structure likely changed.
-- **Confidence**: Medium
-- **Trigger**: Next Perplexity search via smart-search skill — if automation fails or returns unexpected results, update the Perplexity workflow steps.
-
 ## Resolved
+
+### 2026-02-11 — Perplexity UI redesign verified (dismissed)
+- **Resolution**: Live test confirmed Perplexity automation via Playwright still works correctly. The Feb 2026 UI redesign (chat bubbles, sidebar) is purely visual — Playwright's browser_snapshot uses accessibility tree which is unaffected. Navigate → snapshot → type → submit → wait → snapshot flow works as documented. No action needed.
