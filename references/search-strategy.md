@@ -84,7 +84,7 @@ Query received
 - **Workflow**: read_wiki_structure → ask_question OR read_wiki_contents
 - **Cost**: Free, unlimited
 
-### Perplexity (via Playwright MCP + Browser Tools MCP)
+### Perplexity (via Playwright MCP)
 - **Best for**: Current events, broad research, latest information
 - **Strengths**: Real-time web search, synthesized answers, Pro features (until 2026/12/28)
 - **Workflow**: navigate → type query → wait → extract snapshot
