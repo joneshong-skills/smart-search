@@ -35,7 +35,7 @@ For latest API details, Context7 is significantly fresher.
 
 ### Perplexity (via Playwright MCP)
 - **Best for**: Current events, broad research, latest information
-- **Strengths**: Real-time web search, synthesized answers, Pro features (until 2026/12/28)
+- **Strengths**: Real-time web search, synthesized answers, Pro features (see § Account Status)
 - **Workflow**: navigate → type query → wait → extract snapshot
 - **Cost**: Free with Pro membership
 
@@ -87,3 +87,11 @@ Location: `~/.claude/skills/smart-search/data/usage.json`
 - `month`: Auto-resets when current month differs from stored month
 - `count`: Incremented by `usage_tracker.py increment`
 - `history`: Previous months' counts preserved on reset
+
+## Account Status
+
+> **Update this section** whenever a subscription is renewed, cancelled, or changed.
+
+| Service | Plan | Expires | Notes |
+|---------|------|---------|-------|
+| Perplexity | Pro | 2026/12/28 | Annual subscription; update date on renewal |
