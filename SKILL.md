@@ -7,6 +7,7 @@ description: >-
   or discusses searching, researching, looking up documentation,
   finding current information, or querying technical references.
 version: 0.3.1
+tools: mcp__deepwiki__ask_question, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_type, mcp__playwright__browser_wait_for, WebSearch, Bash
 argument-hint: <search query in any language>
 ---
 
@@ -197,7 +198,7 @@ python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 - **DeepWiki first** — free and unlimited, always try it before spending Context7 quota
 - Context7 is the **precision tool** — save it for when DeepWiki's answer isn't enough
 - Context7 quota exhausted → **DeepWiki fallback** (not Perplexity)
-- Perplexity Pro membership valid until **2026/12/28**
+- Perplexity Pro membership — check `references/search-strategy.md` § Account Status for expiry date
 - Context7 limit resets on the 1st of each month automatically
 - Use `mcp__playwright__browser_console_messages` (level=error) if Perplexity page fails to load
 
