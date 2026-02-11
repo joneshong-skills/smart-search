@@ -6,7 +6,8 @@ description: >-
   "query library docs", "搜尋", "查一下", "幫我找",
   or discusses searching, researching, looking up documentation,
   finding current information, or querying technical references.
-version: 0.3.0
+version: 0.3.1
+argument-hint: <search query in any language>
 ---
 
 # Smart Search
@@ -203,4 +204,4 @@ python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 ## Additional Resources
 
 ### Reference Files
-- **`references/search-strategy.md`** — Detailed decision tree, query classification keywords, Perplexity workflow steps, and usage tracking documentation
+- **`references/search-strategy.md`** — Freshness benchmarks, tool capabilities, search tips, ambiguous name examples, and quota management details
