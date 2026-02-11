@@ -19,9 +19,34 @@ For latest API details, Context7 is significantly fresher.
 ```
 Query received
 │
-├─ Query type classification
+├─ Step 0: GitHub Code Detection (Auto-Detect for ambiguous queries)
 │  │
-│  ├─ [A] Library/Framework documentation
+│  ├─ SKIP if: query has clear code signals (import, API, hook, config, repo, GitHub, owner/repo)
+│  ├─ SKIP if: query is clearly non-code (news, 今天, 新聞, 比較, 推薦, etc.)
+│  │
+│  ├─ TRIGGER if: query subject is ambiguous (name could be code or non-code)
+│  │   │
+│  │   └─ WebSearch: "{subject}" github
+│  │       │
+│  │       ├─ GitHub repo found in top results → GitHub Code Query → Route A
+│  │       └─ No GitHub repo found → proceed to normal classification (Step 1)
+│  │
+│  Examples:
+│  │  "Apollo 怎麼用"   → WebSearch "Apollo github" → apollographql → Route A
+│  │  "Apollo 登月計畫"  → WebSearch "Apollo github" → NASA/history  → Step 1 (not code)
+│  │  "React useEffect" → SKIP Step 0 (clear code signal) → Step 1 directly
+│
+├─ Step 1: Query type classification
+│  │
+│  ├─ [A] GitHub Code Query (Step 0 detected, or explicit code signals)
+│  │   e.g. "Apollo 怎麼用" (Step 0 → GitHub match), "how does X repo work"
+│  │   │
+│  │   └─────→ DeepWiki + Perplexity (PARALLEL)
+│  │           Run both via Task tool in parallel, synthesize results
+│  │           DeepWiki: ask_question with owner/repo
+│  │           Perplexity: search for broader context, examples, community usage
+│  │
+│  ├─ [B] Library/Framework documentation (well-known, no ambiguity)
 │  │   e.g. "React useEffect", "Next.js routing", "Tailwind config"
 │  │   │
 │  │   ├─ Step 1: DeepWiki (FREE, unlimited)
@@ -40,12 +65,6 @@ Query received
 │  │   │               Search: "{library} {query} documentation latest"
 │  │   │
 │  │   NOTE: Do NOT skip DeepWiki. Always try it first to save quota.
-│  │
-│  ├─ [B] GitHub repository question
-│  │   e.g. "how does X repo work", "architecture of Y project"
-│  │   │
-│  │   └─────→ DeepWiki (read_wiki_structure → ask_question)
-│  │           Free, unlimited, always preferred for repo questions
 │  │
 │  ├─ [C] Current events / news / trending
 │  │   e.g. "今天新聞", "latest AI news", "recent updates"
@@ -111,13 +130,29 @@ Query received
 
 ## Query Classification Keywords
 
-### Type A — Library Docs
+### Step 0 — GitHub Detection Signals
+**Clear code signals** (SKIP Step 0, go straight to classification):
+import, install, API, hook, component, config, setup, npm, pip, cargo,
+repo, repository, GitHub, owner/repo format, codebase, architecture, source code
+
+**Clear non-code signals** (SKIP Step 0, classify as C/D):
+today, latest, news, 今天, 最新, 新聞, 比較, 推薦, tutorial, best practice, vs
+
+**Ambiguous** (TRIGGER Step 0 WebSearch):
+A proper noun or product name without clear code/non-code context.
+Examples: "Apollo", "Prisma", "Remix", "Fiber", "Echo", "Gin", "Viper"
+
+### Type A — GitHub Code Query (Step 0 match OR explicit code signals)
+Keywords: import, install, API, hook, component, config, setup, npm, pip, cargo,
+repo, repository, codebase, architecture, source code, implementation,
+how does X work (referring to a specific project), contribute,
++ any query where Step 0 found a GitHub repo
+Backend: **DeepWiki + Perplexity (parallel)**
+
+### Type B — Library/Framework Docs (well-known, no ambiguity)
 Keywords: import, install, API, hook, component, config, setup, usage, example,
 migration, version, typescript, props, method, function, class
-
-### Type B — Repo Questions
-Keywords: repo, repository, codebase, architecture, source code, implementation,
-how does X work (referring to a specific project), contribute
+Backend: **DeepWiki first** → Context7 supplement
 
 ### Type C — Current Events
 Keywords: today, latest, news, trending, 今天, 最新, 新聞, recent, update,
@@ -129,6 +164,10 @@ how to, tutorial, guide, 比較, 推薦, 教學
 
 ### Type E — Hybrid
 Multiple keyword categories detected, or explicit multi-source request
+
+> **Note**: Types [A-E] are *classification categories*. SKILL.md's Routes [A-E] are
+> *execution paths*. They largely align, but Route C (Context7) is a sub-route of
+> Route B (escalation when DeepWiki is insufficient), not a standalone classification.
 
 ## Usage Tracking
 

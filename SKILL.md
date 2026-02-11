@@ -6,7 +6,7 @@ description: >-
   "query library docs", "搜尋", "查一下", "幫我找",
   or discusses searching, researching, looking up documentation,
   finding current information, or querying technical references.
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Smart Search
@@ -28,12 +28,32 @@ Both can answer library/framework questions. The real differences:
 
 ## Search Backend Selection
 
+### Step 0 — GitHub Code Detection (Auto-Detect)
+
+When the query subject is **ambiguous** (could be code or non-code), auto-detect before classifying:
+
+**When to trigger**: The query mentions a name/term that COULD be a GitHub repo/library but the user
+did NOT explicitly say it's code-related. Skip this step if:
+- Query already contains clear code signals (import, API, hook, config, repo, GitHub, etc.)
+- Query is obviously non-code (news, 今天, 新聞, 比較, 推薦, etc.)
+- Query includes `owner/repo` format (e.g., `vercel/next.js`)
+
+**How**:
+1. Use `WebSearch` with query: `"{subject}" github` (keep it minimal for speed)
+2. Check results — if a GitHub repository appears prominently in the top results → treat as **GitHub Code Query**
+3. If no GitHub repo found → proceed to normal classification (Step 1)
+
+**Example**:
+- User asks "Apollo 怎麼用" → WebSearch `"Apollo" github` → finds `apollographql/apollo-client` → GitHub Code Query
+- User asks "Apollo 登月計畫" → WebSearch `"Apollo" github` → top results are NASA/history → NOT code → normal classification
+- User asks "React useEffect" → skip Step 0 (clear code signal) → directly classify as Library docs
+
 ### Step 1 — Classify the Query
 
 | Type | Keywords / Signals | Backend |
 |------|-------------------|---------|
-| **Library/Framework docs** | import, API, hook, config, props, function, component | **DeepWiki first** → Context7 補充 |
-| **GitHub repo architecture** | repo name, architecture, source code, implementation | **DeepWiki** |
+| **GitHub Code Query** (detected by Step 0 or explicit signals) | repo name + GitHub match, import, API, hook, config, props, function, component, repo, architecture, source code | **DeepWiki + Perplexity** (parallel) |
+| **Library/Framework docs** (no ambiguity, clearly a known lib) | import, API, hook, config, props, function, component | **DeepWiki first** → Context7 補充 |
 | **Current events** | today, latest, news, 今天, 最新, 2026 | **Perplexity** |
 | **General research** | best practice, comparison, vs, tutorial, 推薦, 比較 | **Perplexity** |
 | **Hybrid** | Multiple types detected | Combine (parallel when possible) |
@@ -74,14 +94,35 @@ python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py increment
 
 ### Step 4 — Execute Search
 
-#### Route A: DeepWiki (First Choice for All Library & Repo Questions)
+#### Route A: DeepWiki + Perplexity (GitHub Code Query — Default for Step 0 matches)
+
+Use when: Step 0 detected a GitHub repo, or user is clearly asking about a GitHub project/library.
+
+Run **both in parallel** using the Task tool (subagent_type: general-purpose):
+
+**DeepWiki leg**:
+1. Determine the GitHub `owner/repo` (use the repo found in Step 0, or map library name → repo)
+2. Call `mcp__deepwiki__ask_question` with repo name and question
+
+**Perplexity leg**:
+1. `mcp__playwright__browser_navigate` → `https://www.perplexity.ai/`
+2. `mcp__playwright__browser_snapshot` → locate search input ref
+3. `mcp__playwright__browser_type` → ref=search-input, text=query, submit=true
+4. `mcp__playwright__browser_wait_for` → time=12
+5. `mcp__playwright__browser_snapshot` → extract answer text
+
+Synthesize both results, noting which info came from which source.
+
+#### Route B: DeepWiki First → Context7 Supplement (Known Library, No Ambiguity)
+
+For well-known library queries where there's no name ambiguity:
 
 1. Determine the GitHub `owner/repo` for the library (e.g., React → `facebook/react`, Next.js → `vercel/next.js`)
 2. Call `mcp__deepwiki__ask_question` with repo name and question
 3. Evaluate answer quality — if sufficient, return directly
 4. If answer has gaps or needs precise API details, escalate to Context7
 
-#### Route B: Context7 (Precision Supplement)
+#### Route C: Context7 (Precision Supplement)
 
 Only use when:
 - DeepWiki answer is imprecise or incomplete
@@ -95,7 +136,7 @@ Steps:
 4. Run `usage_tracker.py increment` to record the call
 5. Return with source attribution and quota info
 
-#### Route C: Perplexity (Current Events, Research & Fallback)
+#### Route D: Perplexity (Current Events, Research & Fallback)
 
 Use for:
 - Current events, news, trending topics
@@ -111,7 +152,7 @@ Steps:
 6. Parse accessibility tree for paragraphs, citations, source links
 7. Return synthesized answer with Perplexity source links
 
-#### Route D: Hybrid (Multiple Sources)
+#### Route E: Hybrid (Multiple Sources)
 
 Run applicable routes in parallel using the Task tool (subagent_type: general-purpose).
 Synthesize results, noting which info came from where.
