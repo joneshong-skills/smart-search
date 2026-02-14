@@ -7,7 +7,7 @@ description: >-
   or discusses searching, researching, looking up documentation,
   finding current information, or querying technical references.
 version: 0.3.1
-tools: mcp__deepwiki__ask_question, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_type, mcp__playwright__browser_wait_for, WebSearch, Bash
+tools: Task, mcp__deepwiki__ask_question, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_type, mcp__playwright__browser_wait_for, WebSearch, WebFetch, Bash
 argument-hint: <search query in any language>
 ---
 
@@ -154,6 +154,11 @@ Steps:
 6. Parse accessibility tree for paragraphs, citations, source links
 7. Return synthesized answer with Perplexity source links
 
+**Fallback when Playwright is unavailable**: If the Playwright MCP tools are not connected or
+fail to launch a browser, fall back to `WebSearch` for the query, then use `WebFetch` to
+retrieve and extract content from the most relevant result URLs. This provides similar
+coverage to Perplexity without requiring a browser session.
+
 #### Route E: Hybrid (Multiple Sources)
 
 Run applicable routes in parallel using the Task tool (subagent_type: general-purpose).
@@ -201,6 +206,25 @@ python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 - Perplexity Pro membership — check `references/search-strategy.md` § Account Status for expiry date
 - Context7 limit resets on the 1st of each month automatically
 - Use `mcp__playwright__browser_console_messages` (level=error) if Perplexity page fails to load
+
+## Continuous Improvement
+
+This skill evolves with each use. After every invocation:
+
+1. **Reflect** — Identify what worked, what caused friction, and any unexpected issues
+2. **Record** — Append a concise lesson to `lessons.md` in this skill's directory
+3. **Refine** — When a pattern recurs (2+ times), update SKILL.md directly
+
+### lessons.md Entry Format
+
+```
+### YYYY-MM-DD — Brief title
+- **Friction**: What went wrong or was suboptimal
+- **Fix**: How it was resolved
+- **Rule**: Generalizable takeaway for future invocations
+```
+
+Accumulated lessons signal when to run `/skill-optimizer` for a deeper structural review.
 
 ## Additional Resources
 
