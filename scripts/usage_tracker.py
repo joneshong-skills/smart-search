@@ -34,16 +34,20 @@ def load_data():
 
     current_month = datetime.now().strftime("%Y-%m")
     if data.get("month") != current_month:
+        # Archive previous month's count to history before resetting
+        old_month = data.get("month")
+        old_count = data.get("count", 0)
+        history = data.get("history", {})
+        if old_month and old_count > 0:
+            history[old_month] = old_count
+
         data = {
             "month": current_month,
             "count": 0,
             "limit": data.get("limit", DEFAULT_LIMIT),
             "threshold": data.get("threshold", DEFAULT_THRESHOLD),
-            "history": data.get("history", {}),
+            "history": history,
         }
-        # Save previous month to history
-        if "month" in data:
-            pass  # Already reset
 
     if "limit" not in data:
         data["limit"] = DEFAULT_LIMIT
@@ -144,7 +148,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     cmd = sys.argv[1]
-    if cmd == "status":
+    if cmd in ("-h", "--help"):
+        print(__doc__)
+        sys.exit(0)
+    elif cmd == "status":
         cmd_status()
     elif cmd == "increment":
         cmd_increment()

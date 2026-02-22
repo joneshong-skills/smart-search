@@ -6,8 +6,8 @@ description: >-
   "query library docs", "搜尋", "查一下", "幫我找",
   or discusses searching, researching, looking up documentation,
   finding current information, or querying technical references.
-version: 0.3.1
-tools: mcp__deepwiki__ask_question, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_type, mcp__playwright__browser_wait_for, WebSearch, Bash
+version: 0.3.3
+tools: Task, mcp__deepwiki__ask_question, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_type, mcp__playwright__browser_wait_for, WebSearch, WebFetch, Bash
 argument-hint: <search query in any language>
 ---
 
@@ -16,6 +16,18 @@ argument-hint: <search query in any language>
 Hybrid search tool combining DeepWiki (free, unlimited), Context7 (precise, 1000/month),
 and Perplexity Pro via Playwright (current events & broad research).
 Auto-selects the best search backend based on query type, complexity, and quota.
+
+## Agent Delegation
+
+Delegate individual search legs to the `researcher` agent (one per backend or topic angle). For Perplexity/browser-based searches, use the `browser` agent instead.
+
+```
+Main context (query classification + synthesis)
+  └─ Task(subagent_type: researcher, prompt: "Search DeepWiki for {repo}: {question}. Return ONLY a concise summary of findings.")
+  └─ Task(subagent_type: browser, prompt: "Search Perplexity for: {query}. Return ONLY the answer text and source URLs.")
+```
+
+Fallback: if `researcher` is unavailable, run WebSearch + WebFetch inline.
 
 ## Key Insight: DeepWiki vs Context7
 
@@ -154,6 +166,11 @@ Steps:
 6. Parse accessibility tree for paragraphs, citations, source links
 7. Return synthesized answer with Perplexity source links
 
+**Fallback when Playwright is unavailable**: If the Playwright MCP tools are not connected or
+fail to launch a browser, fall back to `WebSearch` for the query, then use `WebFetch` to
+retrieve and extract content from the most relevant result URLs. This provides similar
+coverage to Perplexity without requiring a browser session.
+
 #### Route E: Hybrid (Multiple Sources)
 
 Run applicable routes in parallel using the Task tool (subagent_type: general-purpose).
@@ -172,6 +189,83 @@ Library query → DeepWiki (always available)
 
 Do NOT skip DeepWiki and go straight to Perplexity — DeepWiki is free and often sufficient.
 
+## Pre-Search: Check Existing Reports
+
+Before executing any search, check if a similar report already exists in the Research Hub DB:
+
+1. Use `Bash` to call the check endpoint:
+   ```bash
+   curl -s -X POST http://localhost:8830/api/research/check \
+     -H "Content-Type: application/json" \
+     -d '{"query": "<user query>", "threshold": 0.7}'
+   ```
+
+2. Parse the JSON response:
+   - If `exists: true` and `matches` is non-empty:
+     - Present the matching report(s) to the user with title, date, and similarity score
+     - Ask: "找到相似的研究報告，要直接查看還是重新搜尋？"
+     - If user wants to view: fetch full report via `GET http://localhost:8830/api/research/reports/{id}`
+     - If user wants fresh search: proceed to normal search flow
+   - If `exists: false`: proceed to normal search flow
+
+3. If the API is unreachable (curl fails), skip this step and proceed normally (graceful degradation)
+
+## Report Output
+
+Every search result MUST be saved to the Research Hub database via API.
+
+**Steps**:
+1. After synthesizing the final answer, POST to the research_report API using `Bash`:
+   ```bash
+   curl -s -X POST http://localhost:8830/api/research/reports \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "<Title derived from query>",
+       "query": "<original user query>",
+       "content": "<Full synthesized report content in Markdown>",
+       "sources": ["<url1>", "<url2>"],
+       "tags": ["<tag1>", "<tag2>"]
+     }'
+   ```
+   Note: The content field should contain the FULL report in Markdown format.
+   Use `jq` or careful escaping for content with special characters.
+
+2. The API returns a JSON with the report `id`. Mention this in the response footer.
+
+3. **Fallback**: If the API is unreachable (curl returns non-zero), fall back to file write:
+   Save to `${CLAUDE_OUTPUTS_DIR:-~/Claude/skills}/smart-search/{YYYY-MM-DD}-{slug}.md`
+   using the original file format.
+
+**Tags guideline**: Include 3-8 relevant tags per report. These are used for automatic topic extraction.
+Examples: `["react", "server-components", "ssr", "next.js"]`
+
+## Async Slide Generation (Background Mode)
+
+When the user asks to create slides/deck/presentation (`簡報`, `投影片`, `slides`, `pptx`):
+
+1. Search + synthesis stay synchronous (normal flow)
+2. Save the research report first (Report Output section above)
+3. Start slide generation as a background job using `Bash` (`nohup ... &`)
+4. Return immediately without waiting for render completion
+
+Use this pattern:
+
+```bash
+mkdir -p "${CLAUDE_OUTPUTS_DIR:-~/Claude/skills}/smart-search/jobs"
+nohup <deck-generation-command> \
+  > "${CLAUDE_OUTPUTS_DIR:-~/Claude/skills}/smart-search/jobs/<job-slug>.log" 2>&1 &
+echo $!
+```
+
+Response requirements for async deck requests:
+- Include `Job PID`
+- Include expected deck output path
+- Include log path
+- Include a status check command:
+  `ps -p <PID> -o pid=,etime=,state=,command=`
+
+Do not block on deck generation unless the user explicitly asks to wait.
+
 ## Response Format
 
 Always include in the final response:
@@ -179,12 +273,14 @@ Always include in the final response:
 1. **Answer** — The synthesized information
 2. **Sources** — Which backend(s) provided the data
 3. **Quota** (if Context7 was used) — Current month usage / limit
+4. **Report ID** — The database report ID (e.g., `rpt-a1b2c3d4e5f6`), or file path if fallback was used
 
 Example footer:
 ```
 ---
 Sources: DeepWiki (vercel/next.js) + Context7 (Next.js docs v15)
 Context7 quota: 43/1000 (February 2026)
+Report ID: rpt-a1b2c3d4e5f6
 ```
 
 ## Quota Management Commands
@@ -201,6 +297,25 @@ python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 - Perplexity Pro membership — check `references/search-strategy.md` § Account Status for expiry date
 - Context7 limit resets on the 1st of each month automatically
 - Use `mcp__playwright__browser_console_messages` (level=error) if Perplexity page fails to load
+
+## Continuous Improvement
+
+This skill evolves with each use. After every invocation:
+
+1. **Reflect** — Identify what worked, what caused friction, and any unexpected issues
+2. **Record** — Append a concise lesson to `lessons.md` in this skill's directory
+3. **Refine** — When a pattern recurs (2+ times), update SKILL.md directly
+
+### lessons.md Entry Format
+
+```
+### YYYY-MM-DD — Brief title
+- **Friction**: What went wrong or was suboptimal
+- **Fix**: How it was resolved
+- **Rule**: Generalizable takeaway for future invocations
+```
+
+Accumulated lessons signal when to run `/skill-optimizer` for a deeper structural review.
 
 ## Additional Resources
 
