@@ -33,18 +33,18 @@ For latest API details, Context7 is significantly fresher.
 - **Workflow**: read_wiki_structure → ask_question OR read_wiki_contents
 - **Cost**: Free, unlimited
 
-### Perplexity (via Playwright MCP)
-- **Best for**: Current events, broad research, latest information
-- **Strengths**: Real-time web search, synthesized answers, Pro features (see § Account Status)
-- **Workflow**: navigate → type query → wait → extract snapshot
-- **Cost**: Free with Pro membership
+### WebSearch + WebFetch (Built-in)
+- **Best for**: Current events, broad research, latest information, fallback for all routes
+- **Strengths**: Always available, no quota limits, real-time web results
+- **Workflow**: WebSearch query → select top URLs → WebFetch for full content
+- **Cost**: Free, unlimited
 
-## Perplexity Search Tips
+## Web Search Tips
 
 - Add date context for time-sensitive queries: "2026 latest..."
 - Use Chinese for Taiwan-specific queries
 - Use English for technical/programming queries
-- Perplexity Pro supports focus modes: check if "研究" button is available for deep research
+- Select 2-3 highest-quality URLs from WebSearch results for WebFetch extraction
 
 ## Query Classification — Ambiguous Name Examples
 
@@ -66,7 +66,7 @@ When Step 0 (GitHub Detection) triggers, here are common ambiguous names and the
 |-----------|----------|
 | count < 900 | Context7 available; still try DeepWiki first |
 | count >= 900 | WARNING — mention remaining quota, strongly prefer DeepWiki |
-| count >= 1000 | EXHAUSTED — all library queries → DeepWiki, then Perplexity |
+| count >= 1000 | EXHAUSTED — all library queries → DeepWiki, then WebSearch |
 
 ## Data File Schema
 
@@ -94,4 +94,4 @@ Location: `~/.claude/skills/smart-search/data/usage.json`
 
 | Service | Plan | Expires | Notes |
 |---------|------|---------|-------|
-| Perplexity | Pro | 2026/12/28 | Annual subscription; update date on renewal |
+| Context7 | Free | — | 1000 calls/month, resets on 1st |

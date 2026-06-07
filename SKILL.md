@@ -7,7 +7,7 @@ description: >-
   or discusses searching, researching, looking up documentation,
   finding current information, or querying technical references.
 version: 0.3.3
-tools: Task, mcp__deepwiki__ask_question, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_type, mcp__playwright__browser_wait_for, WebSearch, WebFetch, Bash
+tools: Task, WebSearch, WebFetch, Bash
 argument-hint: <search query in any language>
 ---
 
@@ -93,7 +93,7 @@ For library documentation queries, follow this priority:
 ### Step 3 — Check Context7 Quota (Before Every Context7 Call)
 
 ```bash
-python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py check
+~/.local/bin/python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py check
 ```
 
 - `available: true, warning: false` → Use Context7
@@ -103,7 +103,7 @@ python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py check
 After each successful Context7 call:
 
 ```bash
-python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py increment
+~/.local/bin/python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py increment
 ```
 
 ### Step 4 — Execute Search
@@ -116,14 +116,10 @@ Run **both in parallel** using the Task tool (subagent_type: general-purpose):
 
 **DeepWiki leg**:
 1. Determine the GitHub `owner/repo` (use the repo found in Step 0, or map library name → repo)
-2. Call `mcp__deepwiki__ask_question` with repo name and question
+2. Query DeepWiki via mcpproxy: `call_tool_read(server="deepwiki", tool="ask_question", arguments={repoName, question})`
 
-**Perplexity leg**:
-1. `mcp__playwright__browser_navigate` → `https://www.perplexity.ai/`
-2. `mcp__playwright__browser_snapshot` → locate search input ref
-3. `mcp__playwright__browser_type` → ref=search-input, text=query, submit=true
-4. `mcp__playwright__browser_wait_for` → time=12
-5. `mcp__playwright__browser_snapshot` → extract answer text
+**Perplexity leg** (delegate to `browser` agent):
+Prompt the browser agent: "Use camoufox-cli with --session perplexity --headed --persistent ~/.camoufox-profiles/master. Open https://www.perplexity.ai/, wait for page load, use snapshot -i to find the search input, fill it with the query, press Enter, wait 12s, snapshot again to extract answer text and source links. Return ONLY the synthesized answer and source URLs."
 
 Synthesize both results, noting which info came from which source.
 
@@ -132,7 +128,7 @@ Synthesize both results, noting which info came from which source.
 For well-known library queries where there's no name ambiguity:
 
 1. Determine the GitHub `owner/repo` for the library (e.g., React → `facebook/react`, Next.js → `vercel/next.js`)
-2. Call `mcp__deepwiki__ask_question` with repo name and question
+2. Query DeepWiki via mcpproxy: `call_tool_read(server="deepwiki", tool="ask_question", arguments={repoName, question})`
 3. Evaluate answer quality — if sufficient, return directly
 4. If answer has gaps or needs precise API details, escalate to Context7
 
@@ -145,8 +141,8 @@ Only use when:
 
 Steps:
 1. Run `usage_tracker.py check` to verify quota
-2. Call `mcp__context7__resolve-library-id` with library name
-3. Call `mcp__context7__query-docs` with resolved library ID and query
+2. Resolve library via mcpproxy: `call_tool_read(server="context7", tool="resolve-library-id", arguments={libraryName})`
+3. Query docs via mcpproxy: `call_tool_read(server="context7", tool="query-docs", arguments={libraryId, query})`
 4. Run `usage_tracker.py increment` to record the call
 5. Return with source attribution and quota info
 
@@ -158,18 +154,10 @@ Use for:
 - Fallback when both DeepWiki and Context7 are insufficient or unavailable
 
 Steps:
-1. `mcp__playwright__browser_navigate` → `https://www.perplexity.ai/`
-2. `mcp__playwright__browser_snapshot` → locate search input ref
-3. `mcp__playwright__browser_type` → ref=search-input, text=query, submit=true
-4. `mcp__playwright__browser_wait_for` → time=12
-5. `mcp__playwright__browser_snapshot` → extract answer text
-6. Parse accessibility tree for paragraphs, citations, source links
-7. Return synthesized answer with Perplexity source links
+1. Delegate to `browser` agent with prompt: "Use camoufox-cli with --session perplexity --headed --persistent ~/.camoufox-profiles/master. Open https://www.perplexity.ai/, use snapshot -i to find search input, fill with query, press Enter, wait 12s, snapshot to extract answer and source links. Return the synthesized answer with source URLs."
+2. Parse the browser agent's response for answer text and source URLs
 
-**Fallback when Playwright is unavailable**: If the Playwright MCP tools are not connected or
-fail to launch a browser, fall back to `WebSearch` for the query, then use `WebFetch` to
-retrieve and extract content from the most relevant result URLs. This provides similar
-coverage to Perplexity without requiring a browser session.
+**Fallback when browser agent is unavailable**: Fall back to `WebSearch` for the query, then use `WebFetch` to retrieve and extract content from the most relevant result URLs. This provides similar coverage to Perplexity without requiring a browser session.
 
 #### Route E: Hybrid (Multiple Sources)
 
@@ -191,53 +179,51 @@ Do NOT skip DeepWiki and go straight to Perplexity — DeepWiki is free and ofte
 
 ## Pre-Search: Check Existing Reports
 
-Before executing any search, check if a similar report already exists in the Research Hub DB:
+Before executing any search, check if a similar report already exists via intelflow CLI:
 
-1. Use `Bash` to call the check endpoint:
-   ```bash
-   curl -s -X POST http://localhost:8830/api/research/check \
-     -H "Content-Type: application/json" \
-     -d '{"query": "<user query>", "threshold": 0.7}'
-   ```
+```bash
+~/.local/bin/python3 ~/workshop/core/cli/intelflow.py reports check "<user query>" --threshold 0.7
+```
 
-2. Parse the JSON response:
-   - If `exists: true` and `matches` is non-empty:
-     - Present the matching report(s) to the user with title, date, and similarity score
-     - Ask: "找到相似的研究報告，要直接查看還是重新搜尋？"
-     - If user wants to view: fetch full report via `GET http://localhost:8830/api/research/reports/{id}`
-     - If user wants fresh search: proceed to normal search flow
-   - If `exists: false`: proceed to normal search flow
-
-3. If the API is unreachable (curl fails), skip this step and proceed normally (graceful degradation)
+- If similar report(s) found:
+  - Present title, date, and similarity score
+  - Ask: "找到相似的研究報告，要直接查看還是重新搜尋？"
+  - If user wants to view: `~/.local/bin/python3 ~/workshop/core/cli/intelflow.py reports get <id>`
+  - If user wants fresh search: proceed to normal search flow
+- If no similar reports found: proceed to normal search flow
+- If the CLI call fails (Core API down), skip this step and proceed normally (graceful degradation)
 
 ## Report Output
 
-Every search result MUST be saved to the Research Hub database via API.
+Every search result MUST be saved to the intelflow DB. **NEVER fall back to local file write.**
 
 **Steps**:
-1. After synthesizing the final answer, POST to the research_report API using `Bash`:
+1. After synthesizing the final answer, save via intelflow CLI:
    ```bash
-   curl -s -X POST http://localhost:8830/api/research/reports \
-     -H "Content-Type: application/json" \
-     -d '{
-       "title": "<Title derived from query>",
-       "query": "<original user query>",
-       "content": "<Full synthesized report content in Markdown>",
-       "sources": ["<url1>", "<url2>"],
-       "tags": ["<tag1>", "<tag2>"]
-     }'
+   ~/.local/bin/python3 ~/workshop/core/cli/intelflow.py reports create \
+     --title "<Title derived from query>" \
+     --query "<original user query>" \
+     --content "<Full synthesized report content in Markdown>" \
+     --tags "tag1,tag2,tag3" \
+     --sources '[{"url":"<url1>","label":"<label1>"},{"url":"<url2>","label":"<label2>"}]' \
+     --skill smart-search
    ```
-   Note: The content field should contain the FULL report in Markdown format.
-   Use `jq` or careful escaping for content with special characters.
+   For content with special characters, use a heredoc or temp file:
+   ```bash
+   CONTENT=$(cat <<'CONTENT_EOF'
+   <Full Markdown report>
+   CONTENT_EOF
+   )
+   ~/.local/bin/python3 ~/workshop/core/cli/intelflow.py reports create \
+     --title "..." --query "..." --content "$CONTENT" --tags "..." --sources '...' --skill smart-search
+   ```
 
-2. The API returns a JSON with the report `id`. Mention this in the response footer.
+2. The CLI prints the report `id`. Mention this in the response footer.
 
-3. **Fallback**: If the API is unreachable (curl returns non-zero), fall back to file write:
-   Save to `${CLAUDE_OUTPUTS_DIR:-~/Claude/skills}/smart-search/{YYYY-MM-DD}-{slug}.md`
-   using the original file format.
+3. **If CLI fails** (Core API down): warn the user explicitly — do NOT silently fall back to file.
 
-**Tags guideline**: Include 3-8 relevant tags per report. These are used for automatic topic extraction.
-Examples: `["react", "server-components", "ssr", "next.js"]`
+**Tags guideline**: Include 3-8 relevant tags per report. Used for automatic topic extraction.
+Examples: `react,server-components,ssr,next.js`
 
 ## Async Slide Generation (Background Mode)
 
@@ -251,9 +237,9 @@ When the user asks to create slides/deck/presentation (`簡報`, `投影片`, `s
 Use this pattern:
 
 ```bash
-mkdir -p "${CLAUDE_OUTPUTS_DIR:-~/Claude/skills}/smart-search/jobs"
+mkdir -p ~/workshop/outputs/smart-search/jobs
 nohup <deck-generation-command> \
-  > "${CLAUDE_OUTPUTS_DIR:-~/Claude/skills}/smart-search/jobs/<job-slug>.log" 2>&1 &
+  > ~/workshop/outputs/smart-search/jobs/<job-slug>.log 2>&1 &
 echo $!
 ```
 
@@ -286,7 +272,7 @@ Report ID: rpt-a1b2c3d4e5f6
 ## Quota Management Commands
 
 ```bash
-python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
+~/.local/bin/python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 ```
 
 ## Important Notes
@@ -296,7 +282,7 @@ python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 - Context7 quota exhausted → **DeepWiki fallback** (not Perplexity)
 - Perplexity Pro membership — check `references/search-strategy.md` § Account Status for expiry date
 - Context7 limit resets on the 1st of each month automatically
-- Use `mcp__playwright__browser_console_messages` (level=error) if Perplexity page fails to load
+- If Perplexity search fails, check browser agent error output for diagnostics
 
 ## Continuous Improvement
 

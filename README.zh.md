@@ -49,7 +49,7 @@ Context7 每月有 1,000 次呼叫限制。技能自動追蹤用量，配額用�
 ### 查看 Context7 配額
 
 ```bash
-python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
+~/.local/bin/python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 ```
 
 ## 專案結構

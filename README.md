@@ -49,7 +49,7 @@ Just ask Claude naturally. Examples:
 ### Check Context7 Quota
 
 ```bash
-python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
+~/.local/bin/python3 ~/.claude/skills/smart-search/scripts/usage_tracker.py status
 ```
 
 ## Project Structure
