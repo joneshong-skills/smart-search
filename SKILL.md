@@ -29,6 +29,8 @@ Main context (query classification + synthesis)
 
 Fallback: if `researcher` is unavailable, run WebSearch + WebFetch inline.
 
+Background agents often finish with only an `idle_notification` (no findings attached). On receiving idle without results, immediately SendMessage the agent asking it to reply to `team-lead` via SendMessage — its plain-text output is invisible to the parent. Do not busy-wait with tool calls. (Recurred 2026-07-03, 2026-07-05.)
+
 ## Key Insight: DeepWiki vs Context7
 
 Both can answer library/framework questions. The real differences:
