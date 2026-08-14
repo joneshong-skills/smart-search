@@ -140,3 +140,33 @@
 - **Friction**: 影片型 query 無專屬 route；WebFetch 對 YouTube 頁面拿不到 transcript，靠 researcher 以「影片標題 WebSearch + 二手報導」還原論點。另：兩來源 stars 數不一致（61k vs 72.4k）。
 - **Fix**: 三路並行（researcher=影片解析、researcher=生態調查、inline DeepWiki=架構問答），影片論點交叉比對 DeepWiki 事實；數字衝突如實標註範圍不硬選。
 - **Rule**: 「受影片啟發想研究 X 工具」類 query = 影片解析 leg + 工具生態 leg + DeepWiki 架構 leg 並行；影片內容以周邊報導/創作者 blog 三角定位，數據衝突標範圍。
+
+### 2026-07-20 — Orca session history 以官方 docs 作為 UI contract
+- **Friction**: Orca 的 session history 同時涉及 sidebar、transcript store、resume command 與 worktree scope，單看產品首頁容易把它誤讀成 tmux pane 功能。
+- **Fix**: 直接查官方 session-history、agents-sessions、hibernation docs，抽出 scope、group、row actions、resume fallback 與 on-disk transcript 邊界，再對照 Workshop 的 `/api/sessions`、`/api/panes`、`/api/agents`。
+- **Rule**: 研究 agent product 的 UI 模式時，優先用官方 feature page 還原 interaction contract，再用本地 runtime/API 對照，不以 screenshot 或 marketing copy 推斷資料模型。
+
+### 2026-07-22 — ego-lite 要分開看開源 harness 與閉源 browser app
+- **Friction**: GitHub repo 的 README 把「瀏覽器產品」與「agent skill/runtime」放在同一個敘事裡，容易誤以為 repo 包含完整 browser。
+- **Fix**: 同時讀 README、AGENTS.md、`ego-browser` skill、install reference 與 release page，確認 repo 是 Node/CDP harness 和 skill package，真正的 Chromium app 是另行下載的閉源元件。
+- **Rule**: 評估 AI browser repo 時，先切開 runtime、skill、app binary 三個信任面，再比較登入資料繼承、隔離 workspace 與平行 agent 能力。
+
+### 2026-07-23 — Orca 跨 CLI 協調：先區隔終端管理與結構化編排
+- **Friction**: 「可以協調不同 CLI agent」容易被誤解成 agents 共享上下文或由同一模型統一推理。
+- **Fix**: 用官方 Supported agents、Worktrees、Orchestration 三頁交叉驗證；前兩者是 CLI process + worktree 隔離，後者才提供持久訊息、task、dispatch 與 decision gates。
+- **Rule**: 解釋多 CLI agent 工具時，固定分出 process 啟動、檔案隔離、狀態觀測、任務通訊四層；明確說明是否真的有共享記憶或自主協商。
+
+### 2026-07-23 — 工具比較文章先找出各自補的協作層
+- **Friction**: Claude Squad、Herdr、Orca 都被歸成「多 agent 工具」，直接比較功能會掩蓋它們分別處理隔離、觀測與工作面的差異。
+- **Fix**: 先用官方 README 與文件把每個工具映射到單一主要協作層，再用本機程式碼驗證自製工具落在哪個缺口。
+- **Rule**: 寫多 agent 工具文章時，先畫出隔離、觀測、訊息、CLI 相容、治理五層，再談產品或自製工具；避免把同時啟動多個 CLI 說成共享上下文或完整編排。
+
+### 2026-07-26 — 使用者直接給 URL 時跳過 Step 0/1 分類
+- **Friction**: 參數是單一 URL（Anthropic blog）而非搜尋詞，走 Step 0 GitHub 偵測/backend 分類是空轉；同時 WebSearch 回 400（`output_config.effort 'xhigh' is not supported when thinking is disabled`）——harness 層限制，非查詢問題。
+- **Fix**: 直接 WebFetch 兩趟（第一趟逐節全文、第二趟只要逐字引句與數字），交叉比對後綜合；WebSearch 失敗不重試，主文已自足。
+- **Rule**: 參數是 URL → 直接 WebFetch，不跑分類；長文用「全文結構」+「逐字引句」兩趟不同 prompt 打同一 URL（15 分鐘快取內第二趟幾乎零成本），可補小模型摘要的細節流失。WebSearch 在高 effort 且 thinking 關閉時會 400，視為環境限制直接改用 WebFetch。
+
+### 2026-07-31 — Open-Meteo 多參數 API 需避開 browser.open URL 編碼
+- **Friction**: `browser.open` 將 query string 的 `&` 轉為 `%26`，使 Open-Meteo 將多個參數誤判為單一 latitude 值而回 400。
+- **Fix**: 以瀏覽器頁面內的 `fetch()` 發出 API 請求，並用 `page.waitForFunction` 等待結果寫入 DOM；取得高雄七日降雨機率與降水量。
+- **Rule**: Browser 工具對多參數 API URL 出現 `%26` 時，不重試導航；改用頁內 `fetch()` 取得 JSON，並回報 URL 編碼缺陷。
