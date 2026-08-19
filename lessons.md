@@ -170,3 +170,9 @@
 - **Friction**: `browser.open` 將 query string 的 `&` 轉為 `%26`，使 Open-Meteo 將多個參數誤判為單一 latitude 值而回 400。
 - **Fix**: 以瀏覽器頁面內的 `fetch()` 發出 API 請求，並用 `page.waitForFunction` 等待結果寫入 DOM；取得高雄七日降雨機率與降水量。
 - **Rule**: Browser 工具對多參數 API URL 出現 `%26` 時，不重試導航；改用頁內 `fetch()` 取得 JSON，並回報 URL 編碼缺陷。
+
+### 2026-08-15 — X.com search 端點的登入要求高於 profile timeline
+- **Friction**: 抓 @ClaudeDevs 14 天貼文時，profile timeline 捲動只到 08-07 就停（虛擬列表 DOM 回收造成漏抓），改走 `x.com/search?q=from:USER since:...&f=live` 補抓時，playwright 與 camoufox 兩個 master profile **雙雙被登入牆擋下**（`redirect_after_login=/search?...`），而同一 profile 走 profile timeline 卻正常。
+- **Fix**: 缺口標記為「查不到」而非「無貼文」，改用官方 release notes / CHANGELOG 補位該區間的內容價值。未為此打斷 owner 刷 cookie。
+- **Rule**: X 抓取分兩層 —— profile timeline 可用弱登入態，search 需完整登入態。**規劃時就假設 search 路徑會失敗**，把 timeline 當主路徑並接受其覆蓋率上限；缺口一律報「查不到 + 原因」，不可折成「該期間無貼文」。跨來源補位時務必標可信度分級。
+- **Bonus**: `anthropics/claude-code/CHANGELOG.md` 只有版本號**沒有日期** —— 任何帶日期的 Claude Code changelog 都是第三方推定（多按 npm 發布時間），引用時必須註明。
