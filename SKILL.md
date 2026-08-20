@@ -184,13 +184,14 @@ Do NOT skip DeepWiki and go straight to Perplexity — DeepWiki is free and ofte
 Before executing any search, check if a similar report already exists via intelflow CLI:
 
 ```bash
-~/.local/bin/python3 ~/workshop/core/cli/intelflow.py reports check "<user query>" --threshold 0.7
+# Optional (only if you run a report store): check for an existing report first
+# <your-report-cli> reports check "<user query>" --threshold 0.7
 ```
 
 - If similar report(s) found:
   - Present title, date, and similarity score
   - Ask: "找到相似的研究報告，要直接查看還是重新搜尋？"
-  - If user wants to view: `~/.local/bin/python3 ~/workshop/core/cli/intelflow.py reports get <id>`
+  - If user wants to view: `<your-report-cli> reports get <id>` *(only with a report store)*
   - If user wants fresh search: proceed to normal search flow
 - If no similar reports found: proceed to normal search flow
 - If the CLI call fails (Core API down), skip this step and proceed normally (graceful degradation)
@@ -202,7 +203,8 @@ Every search result MUST be saved to the intelflow DB. **NEVER fall back to loca
 **Steps**:
 1. After synthesizing the final answer, save via intelflow CLI:
    ```bash
-   ~/.local/bin/python3 ~/workshop/core/cli/intelflow.py reports create \
+   # Optional: file into a report store if you run one; skip otherwise.
+# <your-report-cli> reports create \
      --title "<Title derived from query>" \
      --query "<original user query>" \
      --content "<Full synthesized report content in Markdown>" \
@@ -216,7 +218,8 @@ Every search result MUST be saved to the intelflow DB. **NEVER fall back to loca
    <Full Markdown report>
    CONTENT_EOF
    )
-   ~/.local/bin/python3 ~/workshop/core/cli/intelflow.py reports create \
+   # Optional: file into a report store if you run one; skip otherwise.
+# <your-report-cli> reports create \
      --title "..." --query "..." --content "$CONTENT" --tags "..." --sources '...' --skill smart-search
    ```
 
@@ -239,9 +242,9 @@ When the user asks to create slides/deck/presentation (`簡報`, `投影片`, `s
 Use this pattern:
 
 ```bash
-mkdir -p ~/workshop/outputs/smart-search/jobs
+mkdir -p ~/.claude/outputs/smart-search/jobs
 nohup <deck-generation-command> \
-  > ~/workshop/outputs/smart-search/jobs/<job-slug>.log 2>&1 &
+  > ~/.claude/outputs/smart-search/jobs/<job-slug>.log 2>&1 &
 echo $!
 ```
 

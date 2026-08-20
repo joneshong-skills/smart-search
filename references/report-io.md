@@ -34,7 +34,7 @@ Every search result MUST be saved via the `intelflow` CLI.
 
 2. Output: `Report created: <id>` — include this in the response footer.
 
-3. **Fallback**: If CLI errors, write to `${CLAUDE_OUTPUTS_DIR:-~/workshop/outputs}/smart-search/{YYYY-MM-DD}-{slug}.md`
+3. **Fallback**: If CLI errors, write to `${CLAUDE_OUTPUTS_DIR:-~/.claude/outputs}/smart-search/{YYYY-MM-DD}-{slug}.md`
 
 **Tags guideline**: 3-8 relevant, comma-separated. Used for automatic topic extraction.
 
@@ -50,9 +50,9 @@ When the user asks to create slides/deck/presentation (`簡報`, `投影片`, `s
 Use this pattern:
 
 ```bash
-mkdir -p "${CLAUDE_OUTPUTS_DIR:-~/workshop/outputs}/smart-search/jobs"
+mkdir -p "${CLAUDE_OUTPUTS_DIR:-~/.claude/outputs}/smart-search/jobs"
 nohup <deck-generation-command> \
-  > "${CLAUDE_OUTPUTS_DIR:-~/workshop/outputs}/smart-search/jobs/<job-slug>.log" 2>&1 &
+  > "${CLAUDE_OUTPUTS_DIR:-~/.claude/outputs}/smart-search/jobs/<job-slug>.log" 2>&1 &
 echo $!
 ```
 
